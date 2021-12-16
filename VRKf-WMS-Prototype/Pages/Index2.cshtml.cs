@@ -6,15 +6,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Text.Json;
 
 namespace VRKf_WMS_Prototype.Pages
 {
-    public class IndexModel : PageModel
+    public class Index2Model : PageModel
     {
         private readonly ILogger<IndexModel> _logger;
 
-        public IndexModel(ILogger<IndexModel> logger)
+        public Index2Model(ILogger<IndexModel> logger)
         {
             _logger = logger;
         }
@@ -31,7 +30,7 @@ namespace VRKf_WMS_Prototype.Pages
 
             var response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
             ViewData["image"] = Convert.ToBase64String(response);
-            ViewData["featureinfo"] = await GetPos(ew);
+            ViewData["featureinfo"] = await GetFeatureInfo(ew);
         }
         public async Task<byte[]> GetByteMap(string server, int layer, int[] size, float[] pos)
         {
@@ -60,31 +59,10 @@ namespace VRKf_WMS_Prototype.Pages
         {
             using (var client = new HttpClient())
             {
-                // https://wms.gisbialystok.pl/arcgis/services/Ewidencja/MapServer/WMSServer?
-                // request=GetMap&service=WMS&version=1.1.1
-                // &layers=0
-                // &styles=default
-                // &srs=EPSG%3A4326
-                // &bbox=23.064779,53.061270,23.248423,53.177203
-                // &&width=780
-                // &height=330
-                // &format=image%2Fpng
                 var url = "https://wms.gisbialystok.pl/arcgis/services/Ewidencja/MapServer/WMSServer?request=GetFeatureInfo&service=WMS&version=1.1.1&layers=0&styles=default&srs=EPSG%3A4326&bbox=23.064779,53.061270,23.248423,53.177203&&width=780&height=330&format=image%2Fpngwms.gisbialystok.pl";
                 var uri = new Uri(url);
 
                 var response = await client.GetAsync(uri);
-                return await response.Content.ReadAsStringAsync();
-            }
-        }
-        public async Task<string> GetPos(string server)
-        {
-            using (var client = new HttpClient())
-            {
-                var url = "http://api.positionstack.com/v1/forward?access_key=3fae4edf360680a55977be834e713664&query= Mieszka I 4, Białystok, Poland & output = json";
-                var uri = new Uri(url);
-
-                var response = await client.GetAsync(uri);
-                //JsonSerializer.Deserialize(await response.Content.ReadAsByteArrayAsync());
                 return await response.Content.ReadAsStringAsync();
             }
         }
