@@ -7,6 +7,13 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.Json;
+using System.Drawing;
+using System.IO;
+using Microsoft.AspNetCore.Http;
+using System.Drawing.Imaging;
+using AForge.Imaging;
+//using VRKf_WMS_Prototype.Models;
+using Newtonsoft.Json;
 
 namespace VRKf_WMS_Prototype.Pages
 {
@@ -21,17 +28,34 @@ namespace VRKf_WMS_Prototype.Pages
 
         public async Task OnGetAsync()
         {
+            /*
             // 23.064779f, 53.061270f, 23.248423f, 53.177203f
             var ew = "https://wms.gisbialystok.pl/arcgis/services/Ewidencja/MapServer/WMSServer?";
             var ort = "https://wms.gisbialystok.pl/arcgis/services/MSIP_orto2019/MapServer/WMSServer?";
             int layer = 0;
-            int[] size = { 1000, 500 };
+            int[] size = { 2000, 1000 };
             float[] pos = { 23.064779f, 53.061270f };
             float[] realSize = { 0.183644f, 0.115933f };
 
-            var response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
+            string tmpImagePath = "wwwroot/Data/a.png";
+
+            //realSize[0] /= 2;
+            //realSize[1] /= 2;
+
+            string data = await GetPos("http://api.positionstack.com/v1/forward", "Mieszka I 4, Białystok, Poland");
+
+            PositionData position = JsonConvert.DeserializeObject<PositionData>(data);
+            string res = "" + position.latitude + " " + position.longitude;
+
+            byte[] response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
+
             ViewData["image"] = Convert.ToBase64String(response);
-            ViewData["featureinfo"] = await GetPos(ew);
+            ViewData["featureinfo"] = res;
+            ViewData["image2"] = ImageToString(GetImage(tmpImagePath));
+
+            ImageProcessing(GetBitmap(response));
+            //ImageProcessing(tmpImagePath);
+            //*/
         }
         public async Task<byte[]> GetByteMap(string server, int layer, int[] size, float[] pos)
         {
@@ -76,11 +100,12 @@ namespace VRKf_WMS_Prototype.Pages
                 return await response.Content.ReadAsStringAsync();
             }
         }
-        public async Task<string> GetPos(string server)
+        public async Task<string> GetPos(string server, string address)
         {
             using (var client = new HttpClient())
             {
-                var url = "http://api.positionstack.com/v1/forward?access_key=3fae4edf360680a55977be834e713664&query= Mieszka I 4, Białystok, Poland & output = json";
+                string accessKey = "3fae4edf360680a55977be834e713664";
+                var url = server + "?access_key=" + accessKey + "&output=json&query=" + address;
                 var uri = new Uri(url);
 
                 var response = await client.GetAsync(uri);
@@ -88,5 +113,39 @@ namespace VRKf_WMS_Prototype.Pages
                 return await response.Content.ReadAsStringAsync();
             }
         }
+
+        public Bitmap GetImage(string imagePath)
+        {
+            Bitmap bitmap = new Bitmap(imagePath);
+            return bitmap;
+        }
+        public string ImageToString(System.Drawing.Image img)
+        {
+            ImageConverter converter = new ImageConverter();
+            return Convert.ToBase64String((byte[])converter.ConvertTo(img, typeof(byte[])));
+        }
+        public void ImageProcessing(string imagePath)
+        {
+            string tmpImagePath = "wwwroot/Data/a.png";
+            Bitmap image = GetImage(tmpImagePath);
+            ImageProcessing(image);
+        }
+        public void ImageProcessing(Bitmap image)
+        {
+            BlobCounter blobCounter = new BlobCounter();
+            blobCounter.ProcessImage(image);
+            Blob[] blobs = blobCounter.GetObjectsInformation();
+            List<AForge.IntPoint> points = blobCounter.GetBlobsEdgePoints(blobs[0]);
+            //ViewData["featureinfo"] = blobs[0].Area.ToString();
+        }
+
+        public Bitmap GetBitmap(byte[] bytes)
+        {
+            using (var ms = new MemoryStream(bytes))
+            {
+                return new Bitmap(ms);
+            }
+        }
+
     }
 }
