@@ -12,12 +12,17 @@ namespace VRKf_WMS_Prototype.Pages
 {
     public class IndexModel : PageModel
     {
+
+        [BindProperty(SupportsGet = true)]
+        public string AddName { get; set; }
         private readonly ILogger<IndexModel> _logger;
 
         public IndexModel(ILogger<IndexModel> logger)
         {
             _logger = logger;
         }
+
+
 
         public async Task OnGetAsync()
         {
@@ -80,7 +85,8 @@ namespace VRKf_WMS_Prototype.Pages
         {
             using (var client = new HttpClient())
             {
-                var url = "http://api.positionstack.com/v1/forward?access_key=3fae4edf360680a55977be834e713664&query= Mieszka I 4, Białystok, Poland & output = json";
+                //AddName = "Mieszka I 4, Białystok, Poland";
+                var url = "http://api.positionstack.com/v1/forward?access_key=3fae4edf360680a55977be834e713664&query= " +" " +AddName + " "  /*Mieszka I 4, Białystok, Poland*/ +"& output = json";
                 var uri = new Uri(url);
 
                 var response = await client.GetAsync(uri);
