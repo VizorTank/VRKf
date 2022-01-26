@@ -22,6 +22,9 @@ namespace VRKf_WMS_Prototype.Pages
     {
         private readonly ILogger<IndexModel> _logger;
 
+
+        [BindProperty(SupportsGet = true)]
+        public string Address { get; set; }
         public IndexModel(ILogger<IndexModel> logger)
         {
             _logger = logger;
@@ -37,19 +40,25 @@ namespace VRKf_WMS_Prototype.Pages
             int[] size = { 2000, 1000 };
             float[] pos = { 23.064779f, 53.061270f };
             float[] realSize = { 0.183644f, 0.115933f };
-
+            float[] scaleSize = { 0.0183644f*4, 0.0115933f*4 };
             string tmpImagePath = "wwwroot/Data/a.png";
-
+            byte[] response;
             //realSize[0] /= 2;
             //realSize[1] /= 2;
+            string res ="";
+            string data = await GetPos("http://api.positionstack.com/v1/forward", Address);
+            DataList position = System.Text.Json.JsonSerializer.Deserialize<DataList>(data);
 
-            string data = await GetPos("http://api.positionstack.com/v1/forward", "Mieszka I 4, Białystok, Poland");
-
-            PositionData position = JsonConvert.DeserializeObject<PositionData>(data);
-            string res = "" + position.latitude + " " + position.longitude;
-
-            byte[] response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
-
+            
+            if (position.data == null)
+            {
+                response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
+            }
+            else
+            {
+                res = "" + position.data.First().latitude + " " + position.data.First().longitude;
+                response = await GetByteMap(ew, layer, size, new float[] { position.data.First().longitude - scaleSize[0], position.data.First().latitude - scaleSize[1] , position.data.First().longitude + scaleSize[0], position.data.First().latitude + scaleSize[1] });
+            }
             ViewData["image"] = Convert.ToBase64String(response);
             ViewData["featureinfo"] = res;
             ViewData["image2"] = ImageToString(GetImage(tmpImagePath));
@@ -146,6 +155,10 @@ namespace VRKf_WMS_Prototype.Pages
             {
                 return new Bitmap(ms);
             }
+        }
+        public class DataList
+        {
+            public List<PositionData> data { get; set; }
         }
 
     }
