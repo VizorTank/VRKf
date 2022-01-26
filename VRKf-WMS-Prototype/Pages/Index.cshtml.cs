@@ -45,13 +45,13 @@ namespace VRKf_WMS_Prototype.Pages
 
             string data = await GetPos("http://api.positionstack.com/v1/forward", "Mieszka I 4, Białystok, Poland");
 
-            PositionData position = JsonConvert.DeserializeObject<PositionData>(data);
-            string res = "" + position.latitude + " " + position.longitude;
+            DataList position = System.Text.Json.JsonSerializer.Deserialize<DataList>(data);
+            string res = "" + position.data.First().latitude + " " + position.data.First().longitude;
 
             byte[] response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
 
             ViewData["image"] = Convert.ToBase64String(response);
-            ViewData["featureinfo"] = res;
+            //ViewData["featureinfo"] = res;
             ViewData["image2"] = ImageToString(GetImage(tmpImagePath));
 
             ImageProcessing(GetBitmap(response));
@@ -148,5 +148,10 @@ namespace VRKf_WMS_Prototype.Pages
             }
         }
 
+    }
+
+    public class DataList
+    {
+        public List<PositionData> data { get; set; }
     }
 }
