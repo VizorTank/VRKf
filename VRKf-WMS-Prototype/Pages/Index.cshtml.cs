@@ -14,6 +14,7 @@ using System.Drawing.Imaging;
 using AForge.Imaging;
 //using VRKf_WMS_Prototype.Models;
 using Newtonsoft.Json;
+using VRKf_WMS_Prototype.Models;
 
 namespace VRKf_WMS_Prototype.Pages
 {
@@ -28,7 +29,7 @@ namespace VRKf_WMS_Prototype.Pages
 
         public async Task OnGetAsync()
         {
-            /*
+            
             // 23.064779f, 53.061270f, 23.248423f, 53.177203f
             var ew = "https://wms.gisbialystok.pl/arcgis/services/Ewidencja/MapServer/WMSServer?";
             var ort = "https://wms.gisbialystok.pl/arcgis/services/MSIP_orto2019/MapServer/WMSServer?";
@@ -55,7 +56,7 @@ namespace VRKf_WMS_Prototype.Pages
 
             ImageProcessing(GetBitmap(response));
             //ImageProcessing(tmpImagePath);
-            //*/
+            //
         }
         public async Task<byte[]> GetByteMap(string server, int layer, int[] size, float[] pos)
         {
