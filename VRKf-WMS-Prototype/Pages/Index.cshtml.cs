@@ -1,19 +1,18 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AForge;
+using AForge.Imaging;
+using AForge.Imaging.Filters;
+using AForge.Math.Geometry;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Text.Json;
-using System.Drawing;
-using System.IO;
-using Microsoft.AspNetCore.Http;
-using System.Drawing.Imaging;
-using AForge.Imaging;
 //using VRKf_WMS_Prototype.Models;
-using Newtonsoft.Json;
 using VRKf_WMS_Prototype.Models;
 
 namespace VRKf_WMS_Prototype.Pages
@@ -33,10 +32,24 @@ namespace VRKf_WMS_Prototype.Pages
             // 23.064779f, 53.061270f, 23.248423f, 53.177203f
             var ew = "https://wms.gisbialystok.pl/arcgis/services/Ewidencja/MapServer/WMSServer?";
             var ort = "https://wms.gisbialystok.pl/arcgis/services/MSIP_orto2019/MapServer/WMSServer?";
-            int layer = 0;
-            int[] size = { 2000, 1000 };
+            int layer = 8;
+            //int[] size = { 2000, 4000 };
+            int[] size = { 2000, 2000 };
             float[] pos = { 23.064779f, 53.061270f };
             float[] realSize = { 0.183644f, 0.115933f };
+            float[] radius = { realSize[0] / 2, realSize[1] / 2 };
+            float[] centerPos = { pos[0] + radius[0], pos[1] + radius[1] };
+
+            //float[] zoom = { 50f, 50f };
+            float[] zoom = { 100f, 100f };
+
+
+            radius[0] /= zoom[0];
+            radius[1] /= zoom[1];
+
+            //size[0] = (int)(size[0] * zoom[0]);
+            //size[1] = (int)(size[1] * zoom[1]);
+
 
             string tmpImagePath = "wwwroot/Data/a.png";
 
@@ -46,17 +59,28 @@ namespace VRKf_WMS_Prototype.Pages
             string data = await GetPos("http://api.positionstack.com/v1/forward", "Mieszka I 4, Białystok, Poland");
 
             DataList position = System.Text.Json.JsonSerializer.Deserialize<DataList>(data);
-            string res = "" + position.data.First().latitude + " " + position.data.First().longitude;
+            float[] searchPos = { position.data.First().longitude, position.data.First().latitude };
+            if (position != null)
+                ViewData["featureinfo"] = "" + position.data.First().latitude + " " + position.data.First().longitude;
 
-            byte[] response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
+
+            //byte[] response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
+            byte[] response = await GetByteMap(ew, layer, size, new float[] { searchPos[0] - radius[0], searchPos[1] - radius[1], searchPos[0] + radius[0], searchPos[1] + radius[1] });
+
+            Bitmap bitmap = PreProcess(GetBitmap(response));
+            bitmap.Save("wwwroot/Data/output2.jpg", ImageFormat.Jpeg);
+
+            using (System.Drawing.Image image = System.Drawing.Image.FromStream(new MemoryStream(response)))
+            {
+                image.Save("wwwroot/Data/output.jpg", ImageFormat.Jpeg);  // Or Png
+            }
 
             ViewData["image"] = Convert.ToBase64String(response);
-            //ViewData["featureinfo"] = res;
+            
             ViewData["image2"] = ImageToString(GetImage(tmpImagePath));
 
-            ImageProcessing(GetBitmap(response));
+            ImageProcessing(bitmap);
             //ImageProcessing(tmpImagePath);
-            //
         }
         public async Task<byte[]> GetByteMap(string server, int layer, int[] size, float[] pos)
         {
@@ -136,10 +160,34 @@ namespace VRKf_WMS_Prototype.Pages
             BlobCounter blobCounter = new BlobCounter();
             blobCounter.ProcessImage(image);
             Blob[] blobs = blobCounter.GetObjectsInformation();
-            List<AForge.IntPoint> points = blobCounter.GetBlobsEdgePoints(blobs[0]);
-            //ViewData["featureinfo"] = blobs[0].Area.ToString();
+            List<Blob> blobs1 = blobs.ToList();
+            List<Blob> toRemove = new List<Blob>();
+            foreach (var item in blobs1)
+            {
+                if (item.Area < 1000)
+                    toRemove.Add(item);
+            }
+            foreach (var item in toRemove)
+            {
+                blobs1.Remove(item);
+            }
+            blobs1.Count();
+            List<IntPoint> edgePoints = blobCounter.GetBlobsEdgePoints(blobs[0]);
+            List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints);
+            ViewData["featureinfo"] = drawQuadrilateralCorners(corners);
         }
 
+        public string drawQuadrilateralCorners(List<IntPoint> corners)
+        {
+            return "1: " + drawPoint(corners[0]) + 
+                " 2: " + drawPoint(corners[1]) + 
+                " 3: " + drawPoint(corners[2]) + 
+                " 4: " + drawPoint(corners[3]);
+        }
+        public string drawPoint(IntPoint point)
+        {
+            return "" + point.X + " " + point.Y;
+        }
         public Bitmap GetBitmap(byte[] bytes)
         {
             using (var ms = new MemoryStream(bytes))
@@ -148,6 +196,26 @@ namespace VRKf_WMS_Prototype.Pages
             }
         }
 
+        public Bitmap PreProcess(Bitmap bmp)
+        {
+            //Those are AForge filters "using Aforge.Imaging.Filters;"
+            //Grayscale gfilter = new Grayscale(0.2125, 0.7154, 0.0721);
+            /*
+            Grayscale gfilter = new Grayscale(0.5, 0.5, 0.8);
+            Invert ifilter = new Invert();
+            BradleyLocalThresholding thfilter = new BradleyLocalThresholding();
+            bmp = gfilter.Apply(bmp);
+            thfilter.ApplyInPlace(bmp);
+            ifilter.ApplyInPlace(bmp);
+            */
+            Grayscale gfilter = new Grayscale(1, 1, 1);
+            Invert ifilter = new Invert();
+            BradleyLocalThresholding thfilter = new BradleyLocalThresholding();
+            bmp = gfilter.Apply(bmp);
+            thfilter.ApplyInPlace(bmp);
+            ifilter.ApplyInPlace(bmp);
+            return bmp;
+        }
     }
 
     public class DataList
