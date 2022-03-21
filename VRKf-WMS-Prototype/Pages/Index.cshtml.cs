@@ -26,9 +26,12 @@ namespace VRKf_WMS_Prototype.Pages
             _logger = logger;
         }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(float? la, float? lo)
         {
-            
+            // Politechnika kierunek informatyka
+            // latitude: 53.11675
+            // longtitude: 23.1466
+
             // 23.064779f, 53.061270f, 23.248423f, 53.177203f
             var ew = "https://wms.gisbialystok.pl/arcgis/services/Ewidencja/MapServer/WMSServer?";
             var ort = "https://wms.gisbialystok.pl/arcgis/services/MSIP_orto2019/MapServer/WMSServer?";
@@ -52,16 +55,24 @@ namespace VRKf_WMS_Prototype.Pages
 
 
             string tmpImagePath = "wwwroot/Data/a.png";
-
+            float[] searchPos;
             //realSize[0] /= 2;
             //realSize[1] /= 2;
+            if (lo == null || la == null)
+            {
+                string data = await GetPos("http://api.positionstack.com/v1/forward", "Wiejska 45, Białystok, Poland");
 
-            string data = await GetPos("http://api.positionstack.com/v1/forward", "Mieszka I 4, Białystok, Poland");
-
-            DataList position = System.Text.Json.JsonSerializer.Deserialize<DataList>(data);
-            float[] searchPos = { position.data.First().longitude, position.data.First().latitude };
-            if (position != null)
-                ViewData["featureinfo"] = "" + position.data.First().latitude + " " + position.data.First().longitude;
+                DataList position = System.Text.Json.JsonSerializer.Deserialize<DataList>(data);
+                searchPos = new float[] { position.data.First().longitude, position.data.First().latitude };
+                if (position != null)
+                    ViewData["featureinfo"] = "" + position.data.First().latitude + " " + position.data.First().longitude;
+            }
+            else
+            {
+                searchPos = new float[] { (float)lo, (float)la };
+                ViewData["featureinfo"] = "" + searchPos[0] + " " + searchPos[1];
+            }
+            
 
 
             //byte[] response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
@@ -74,10 +85,12 @@ namespace VRKf_WMS_Prototype.Pages
             {
                 image.Save("wwwroot/Data/output.jpg", ImageFormat.Jpeg);  // Or Png
             }
+            byte[] response2 = await GetByteMap(ort, 0, size, new float[] { searchPos[0] - radius[0], searchPos[1] - radius[1], searchPos[0] + radius[0], searchPos[1] + radius[1] });
 
-            ViewData["image"] = Convert.ToBase64String(response);
+            ViewData["image"] = Convert.ToBase64String(response2);
             
-            ViewData["image2"] = ImageToString(GetImage(tmpImagePath));
+            ViewData["image2"] = Convert.ToBase64String(response);
+            //ViewData["image2"] = ImageToString(GetImage(tmpImagePath));
 
             ImageProcessing(bitmap);
             //ImageProcessing(tmpImagePath);
@@ -174,15 +187,18 @@ namespace VRKf_WMS_Prototype.Pages
             blobs1.Count();
             List<IntPoint> edgePoints = blobCounter.GetBlobsEdgePoints(blobs[0]);
             List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints);
-            ViewData["featureinfo"] = drawQuadrilateralCorners(corners);
+            //ViewData["featureinfo"] = drawQuadrilateralCorners(corners);
         }
 
         public string drawQuadrilateralCorners(List<IntPoint> corners)
         {
-            return "1: " + drawPoint(corners[0]) + 
-                " 2: " + drawPoint(corners[1]) + 
-                " 3: " + drawPoint(corners[2]) + 
-                " 4: " + drawPoint(corners[3]);
+            string result = "";
+            for (int i = 0; i < corners.Count; i++)
+            {
+                result += (i + 1) + ": " + drawPoint(corners[0]) + " ";
+            }
+
+            return result;
         }
         public string drawPoint(IntPoint point)
         {
