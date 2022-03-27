@@ -31,6 +31,8 @@ namespace VRKf_WMS_Prototype.Pages
             // Politechnika kierunek informatyka
             // latitude: 53.11675
             // longtitude: 23.1466
+            la = 53.11675f;
+            lo = 23.1466f;
 
             // 23.064779f, 53.061270f, 23.248423f, 53.177203f
             var ew = "https://wms.gisbialystok.pl/arcgis/services/Ewidencja/MapServer/WMSServer?";
@@ -38,6 +40,7 @@ namespace VRKf_WMS_Prototype.Pages
             int layer = 8;
             //int[] size = { 2000, 4000 };
             int[] size = { 2000, 2000 };
+            @ViewData["ImageHeight"] = size[1] / 2;
             float[] pos = { 23.064779f, 53.061270f };
             float[] realSize = { 0.183644f, 0.115933f };
             float[] radius = { realSize[0] / 2, realSize[1] / 2 };
@@ -72,11 +75,29 @@ namespace VRKf_WMS_Prototype.Pages
                 searchPos = new float[] { (float)lo, (float)la };
                 ViewData["featureinfo"] = "" + searchPos[0] + " " + searchPos[1];
             }
-            
 
+            var rectangle = new float[] { 
+                searchPos[0] - radius[0],
+                searchPos[1] - radius[1], 
+                searchPos[0] + radius[0], 
+                searchPos[1] + radius[1] 
+            };
+
+            double[] realSizeInMeters = new double[]
+            {
+                ConvertGlobalPosToMeters(rectangle[0], rectangle[1], rectangle[0], rectangle[3]),
+                ConvertGlobalPosToMeters(rectangle[0], rectangle[1], rectangle[2], rectangle[1])
+
+            };
+
+            double imageRealSize = realSizeInMeters[0] * realSizeInMeters[1];
+
+            ViewData["ImageSize"] = imageRealSize;
 
             //byte[] response = await GetByteMap(ew, layer, size, new float[] { pos[0], pos[1], pos[0] + realSize[0], pos[1] + realSize[1] });
-            byte[] response = await GetByteMap(ew, layer, size, new float[] { searchPos[0] - radius[0], searchPos[1] - radius[1], searchPos[0] + radius[0], searchPos[1] + radius[1] });
+            byte[] response = await GetByteMap(ew, layer, size, rectangle);
+
+
 
             Bitmap bitmap = PreProcess(GetBitmap(response));
             bitmap.Save("wwwroot/Data/output2.jpg", ImageFormat.Jpeg);
@@ -85,16 +106,45 @@ namespace VRKf_WMS_Prototype.Pages
             {
                 image.Save("wwwroot/Data/output.jpg", ImageFormat.Jpeg);  // Or Png
             }
-            byte[] response2 = await GetByteMap(ort, 0, size, new float[] { searchPos[0] - radius[0], searchPos[1] - radius[1], searchPos[0] + radius[0], searchPos[1] + radius[1] });
+            byte[] response2 = await GetByteMap(ort, 0, size, rectangle);
 
             ViewData["image"] = Convert.ToBase64String(response2);
             
             ViewData["image2"] = Convert.ToBase64String(response);
             //ViewData["image2"] = ImageToString(GetImage(tmpImagePath));
 
-            ImageProcessing(bitmap);
+            List<Blob> buildings = ImageProcessing(bitmap);
+            List<float> buildingsSizes = new List<float>();
+            float imageSize = bitmap.Width * bitmap.Height;
+            string buildingsSizesInString = "Building Sizes: ";
+            float sum = 0;
+            foreach (var item in buildings)
+            {
+                buildingsSizes.Add(item.Area);
+                float a = (float)(item.Area * imageRealSize / imageSize);
+                buildingsSizesInString += a + " m2, ";
+                sum += item.Area;
+            }
+
+            ViewData["BuildingsSizes"] = buildingsSizesInString;
+            ViewData["BuildingsSizesSum"] = "Building sizes sum: " + sum;
+            ViewData["ImageLocalSize"] = bitmap.Width * bitmap.Height;
             //ImageProcessing(tmpImagePath);
         }
+
+        public double ConvertGlobalPosToMeters(float lat1, float lon1, float lat2, float lon2)
+        {  // generally used geo measurement function
+            var R = 6378.137; // Radius of earth in KM
+            var dLat = lat2 * Math.PI / 180 - lat1 * Math.PI / 180;
+            var dLon = lon2 * Math.PI / 180 - lon1 * Math.PI / 180;
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+            Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
+            Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            var d = R * c;
+            return d * 1000; // meters
+        }
+
         public async Task<byte[]> GetByteMap(string server, int layer, int[] size, float[] pos)
         {
             using (var client = new HttpClient())
@@ -168,7 +218,7 @@ namespace VRKf_WMS_Prototype.Pages
             Bitmap image = GetImage(tmpImagePath);
             ImageProcessing(image);
         }
-        public void ImageProcessing(Bitmap image)
+        public List<Blob> ImageProcessing(Bitmap image)
         {
             BlobCounter blobCounter = new BlobCounter();
             blobCounter.ProcessImage(image);
@@ -184,10 +234,12 @@ namespace VRKf_WMS_Prototype.Pages
             {
                 blobs1.Remove(item);
             }
-            blobs1.Count();
-            List<IntPoint> edgePoints = blobCounter.GetBlobsEdgePoints(blobs[0]);
-            List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints);
+            //blobs1.Count();
+            //List<IntPoint> edgePoints = blobCounter.GetBlobsEdgePoints(blobs[0]);
+            //List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints);
             //ViewData["featureinfo"] = drawQuadrilateralCorners(corners);
+
+            return blobs1;
         }
 
         public string drawQuadrilateralCorners(List<IntPoint> corners)
@@ -237,5 +289,13 @@ namespace VRKf_WMS_Prototype.Pages
     public class DataList
     {
         public List<PositionData> data { get; set; }
+    }
+
+    public class BuildingRecognition
+    {
+        private static readonly string LandAndBuildingRecordsServer = 
+            "https://wms.gisbialystok.pl/arcgis/services/Ewidencja/MapServer/WMSServer?";
+        private static readonly string OrthophotomapServer = 
+            "https://wms.gisbialystok.pl/arcgis/services/MSIP_orto2019/MapServer/WMSServer?";
     }
 }
