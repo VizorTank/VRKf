@@ -12,8 +12,10 @@ namespace VRKf_WMS_Prototype.Models
         private float Longtitude;
         private float Latitude;
 
+        private byte[] OrtoMapResponse;
         private Bitmap OrtoMap;
-        private Bitmap RealMap;
+        private byte[] PremiterMapResponse;
+        private Bitmap PremiterMap;
 
         private List<Blob> Buildings;
         public LocalizationDataProcessing(DataList address)
@@ -28,32 +30,37 @@ namespace VRKf_WMS_Prototype.Models
             Latitude = la;
         }
 
-        public async Task<Bitmap> GetOrtoMap()
+        public async Task<byte[]> GetOrtoMap()
         {
             if (OrtoMap == null)
             {
-                byte[] response = await DataCollector.GetByteOrthoMap(Longtitude, Latitude);
+                OrtoMapResponse = await DataCollector.GetByteOrthoMap(Longtitude, Latitude);
 
-                OrtoMap = BuildingRecognition.GetBitmap(response);
+                OrtoMap = BuildingRecognition.GetBitmap(OrtoMapResponse);
             }
-            return OrtoMap;
+            return OrtoMapResponse;
         }
 
-        public async Task<Bitmap> GetRealMap()
+        public async Task<byte[]> GetPremiterMap()
         {
-            if (RealMap == null)
+            if (PremiterMap == null)
             {
-                byte[] response = await DataCollector.GetBytePremiterMap(Longtitude, Latitude);
+                PremiterMapResponse = await DataCollector.GetBytePremiterMap(Longtitude, Latitude);
 
-                RealMap = BuildingRecognition.GetBitmap(response);
+                PremiterMap = BuildingRecognition.GetBitmap(PremiterMapResponse);
             }
-            return RealMap;
+            return PremiterMapResponse;
         }
 
         public List<Blob> GetBuildings()
         {
-            if (Buildings != null)
-                Buildings = BuildingRecognition.ImageProcessing(OrtoMap);
+            if (PremiterMap == null)
+                throw new Exception("No Orto map. Please use GetPremiterMap before using this metod.");
+            if (Buildings == null)
+            {
+                Bitmap postProcessed = BuildingRecognition.PreProcessing(PremiterMap);
+                Buildings = BuildingRecognition.ImageProcessing(postProcessed);
+            }
 
             return Buildings;
         }
@@ -70,9 +77,9 @@ namespace VRKf_WMS_Prototype.Models
             OrtoMap = null;
         }
 
-        public void ClearRealMap()
+        public void ClearPremiterMapMap()
         {
-            RealMap = null;
+            PremiterMap = null;
         }
 
         public void ClearBuildings()
