@@ -31,6 +31,11 @@ namespace VRKf_WMS_Prototype.Pages
             // Politechnika kierunek informatyka
             // latitude: 53.11675
             // longtitude: 23.1466
+
+            //--------------------------------------------------
+            //          Określenie koordynatów
+            //--------------------------------------------------
+
             if (la == null)
             {
                 la = 53.11675f;
@@ -42,6 +47,7 @@ namespace VRKf_WMS_Prototype.Pages
             float[] searchPos;
             if (lo == null || la == null)
             {
+                // Zdobycie koordynatów z położenia
                 DataList position = await DataCollector.GetPositionsFromAddress(
                     "http://api.positionstack.com/v1/forward", 
                     "Wiejska 45, Białystok, Poland");
@@ -55,13 +61,22 @@ namespace VRKf_WMS_Prototype.Pages
                 ViewData["featureinfo"] = "" + searchPos[0] + " " + searchPos[1];
             }
 
+            //--------------------------------------------------
+            //          Wykrywanie budynków
+            //--------------------------------------------------
+
+            // Zdobycie rzeczywistej wielkości obrazu (potrzebne do obliczenia wielkości budynku)
             double imageRealSize = DataCollector.GetRealSizeOfImage(searchPos[0], searchPos[1]);
             ViewData["ImageSize"] = imageRealSize;
 
+            // Zdobycie obrysowań budynków
             byte[] response = await DataCollector.GetBytePremiterMap(searchPos[0], searchPos[1]);
+            // Zdobycie rzeczywistej mayp
             byte[] response2 = await DataCollector.GetByteOrthoMap(searchPos[0], searchPos[1]);
 
+            // Zamiana odpowiedzi na Bitmap
             Bitmap rawImage = BuildingRecognition.GetBitmap(response);
+            // Nałożenie filtrów na mapę obrysów budynków
             Bitmap bitmap = BuildingRecognition.PreProcessing(rawImage);
             rawImage.Save("wwwroot/Data/output.jpg", ImageFormat.Jpeg);
             bitmap.Save("wwwroot/Data/output2.jpg", ImageFormat.Jpeg);
@@ -69,6 +84,7 @@ namespace VRKf_WMS_Prototype.Pages
             ViewData["image"] = Convert.ToBase64String(response2);
             ViewData["image2"] = Convert.ToBase64String(response);
 
+            // Wykrycie budynków
             List<Blob> buildings = BuildingRecognition.ImageProcessing(bitmap);
             List<float> buildingsSizes = new List<float>();
             string buildingsSizesInString = "Building Sizes: ";
@@ -76,6 +92,7 @@ namespace VRKf_WMS_Prototype.Pages
             foreach (Blob item in buildings)
             {
                 buildingsSizes.Add(item.Area);
+                // Obliczenie wielkości budynków
                 float a = (float)BuildingRecognition.GetBuildingSize(item, imageRealSize);
                 buildingsSizesInString += a + " m2, ";
                 sum += item.Area;
