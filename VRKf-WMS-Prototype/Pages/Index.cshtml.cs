@@ -26,7 +26,7 @@ namespace VRKf_WMS_Prototype.Pages
             _logger = logger;
         }
 
-        public async Task OnGetAsync(float? la, float? lo)
+        public async Task OnGetAsync(float? lo, float? la)
         {
             // Politechnika kierunek informatyka
             // latitude: 53.11675
