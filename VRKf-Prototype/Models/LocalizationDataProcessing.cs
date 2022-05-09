@@ -9,8 +9,11 @@ namespace VRKf_WMS_Prototype.Models
 {
     public class LocalizationDataProcessing
     {
-        private float Longtitude;
-        private float Latitude;
+        public float Longtitude;
+        public float Latitude;
+
+        public int MapHeight = 2000;
+        public int MapWidth = 2000;
 
         private byte[] OrtoMapResponse;
         private Bitmap OrtoMap;
@@ -30,11 +33,43 @@ namespace VRKf_WMS_Prototype.Models
             Latitude = la;
         }
 
+        public LocalizationDataProcessing()
+        {
+            Longtitude = 23.14655f;
+            Latitude = 53.11675f;
+        }
+
+        public async void SetAddress(string address)
+        {
+            OrtoMap = null;
+            PremiterMap = null;
+            DataList dataList = await DataCollector.GetPositionsFromAddress(
+                    address);
+            Longtitude = dataList.data.First().longitude;
+            Latitude = dataList.data.First().latitude;
+        }
+
+        public void SetCoords(float lo, float la)
+        {
+            OrtoMap = null;
+            PremiterMap = null;
+            Longtitude = lo;
+            Latitude = la;
+        }
+
+        public void SetMapSize(int width, int height)
+        {
+            OrtoMap = null;
+            PremiterMap = null;
+            MapWidth = width;
+            MapHeight = height;
+        }
+
         public async Task<byte[]> GetOrtoMap()
         {
             if (OrtoMap == null)
             {
-                OrtoMapResponse = await DataCollector.GetByteOrthoMap(Longtitude, Latitude);
+                OrtoMapResponse = await DataCollector.GetByteOrthoMap(Longtitude, Latitude, MapWidth, MapHeight);
 
                 OrtoMap = BuildingRecognition.GetBitmap(OrtoMapResponse);
             }
@@ -45,7 +80,7 @@ namespace VRKf_WMS_Prototype.Models
         {
             if (PremiterMap == null)
             {
-                PremiterMapResponse = await DataCollector.GetBytePremiterMap(Longtitude, Latitude);
+                PremiterMapResponse = await DataCollector.GetBytePremiterMap(Longtitude, Latitude, MapWidth, MapHeight);
 
                 PremiterMap = BuildingRecognition.GetBitmap(PremiterMapResponse);
             }

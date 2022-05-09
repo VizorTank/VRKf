@@ -15,27 +15,43 @@ namespace VRKf_WMS_Prototype.Models
         private static readonly string LandAndBuildingRecordsServer =
             "https://wms.gisbialystok.pl/arcgis/services/Ewidencja/MapServer/WMSServer?";
         private static readonly string OrthophotomapServer =
-            "https://wms.gisbialystok.pl/arcgis/services/MSIP_orto2019/MapServer/WMSServer?";
+            "https://wms.gisbialystok.pl/arcgis/services/MSIP_orto2021/MapServer/WMSServer?";
 
         private static readonly string PositionServer = "http://api.positionstack.com/v1/forward";
         // TODO: Get new key
         private static readonly string AccessKey = "3fae4edf360680a55977be834e713664";
 
-        
-
         public static async Task<byte[]> GetByteOrthoMap(float longitude, float latitude)
         {
-            return await GetByteMap(OrthophotomapServer, 0, longitude, latitude);
+            return await GetByteOrthoMap(longitude, latitude, ImageSize[0], ImageSize[1]);
+        }
+
+        public static async Task<byte[]> GetByteOrthoMap(float longitude, float latitude, int width, int height)
+        {
+            return await GetByteMap(OrthophotomapServer, 0, 
+                new float[] { longitude, latitude },
+                new int[] { width, height });
         }
 
         public static async Task<byte[]> GetBytePremiterMap(float longitude, float latitude)
         {
-            return await GetByteMap(LandAndBuildingRecordsServer, 8, longitude, latitude);
+            return await GetBytePremiterMap(longitude, latitude, ImageSize[0], ImageSize[1]);
         }
 
-        public static async Task<byte[]> GetByteMap(string server, int layer, float longitude, float latitude)
+        public static async Task<byte[]> GetBytePremiterMap(float longitude, float latitude, int width, int height)
         {
-            var searchPos = new float[] { longitude, latitude };
+            return await GetByteMap(LandAndBuildingRecordsServer, 8,
+                new float[] { longitude, latitude },
+                new int[] { width, height });
+        }
+
+        public static async Task<byte[]> GetByteMap(string server, int layer, float[] searchPos)
+        {
+            return await GetByteMap(server, layer, searchPos, ImageSize);
+        }
+
+        public static async Task<byte[]> GetByteMap(string server, int layer, float[] searchPos, int[] imageSize)
+        {
             //radius[0] /= zoom[0];
             //radius[1] /= zoom[1];
             var rectangle = new float[] {
@@ -44,7 +60,7 @@ namespace VRKf_WMS_Prototype.Models
                 searchPos[0] + radius[0],
                 searchPos[1] + radius[1]
             };
-            return await GetByteMap(server, layer, ImageSize, rectangle);
+            return await GetByteMap(server, layer, imageSize, rectangle);
         }
 
         public static async Task<byte[]> GetByteMap(string server, int layer, int[] size, float[] position2Corners)

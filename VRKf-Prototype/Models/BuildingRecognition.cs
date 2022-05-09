@@ -15,6 +15,7 @@ namespace VRKf_WMS_Prototype.Models
         {
             using (var ms = new MemoryStream(bytes))
             {
+                ms.Position = 0;
                 return new Bitmap(ms);
             }
         }
