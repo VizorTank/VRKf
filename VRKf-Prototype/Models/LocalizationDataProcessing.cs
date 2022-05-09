@@ -12,8 +12,8 @@ namespace VRKf_WMS_Prototype.Models
         public float Longtitude;
         public float Latitude;
 
-        public int MapHeight = 2000;
-        public int MapWidth = 2000;
+        public int MapHeight = 500;
+        public int MapWidth = 500;
 
         private byte[] OrtoMapResponse;
         private Bitmap OrtoMap;

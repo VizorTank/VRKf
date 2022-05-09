@@ -33,17 +33,17 @@
                     <RowDefinition Height="30"/>
                     <RowDefinition Height="30"/>
                 </Grid.RowDefinitions>
-                <Label Grid.Row="0" Grid.Column="0" Content="Longtitude"/>
+                <Label Grid.Row="0" Grid.Column="0" Content="Longtitude:"/>
                 <TextBox Grid.Row="0" Grid.Column="1" x:Name="Longtitude"/>
-                <Label Grid.Row="1" Grid.Column="0" Content="Latitude"/>
+                <Label Grid.Row="1" Grid.Column="0" Content="Latitude:"/>
                 <TextBox Grid.Row="1" Grid.Column="1" x:Name="Latitude"/>
-                <Label Grid.Row="2" Grid.Column="0" Content="Address"/>
+                <Label Grid.Row="2" Grid.Column="0" Content="Address:"/>
                 <TextBox Grid.Row="2" Grid.Column="1" x:Name="Address"/>
                 <Button Grid.Row="3" Grid.ColumnSpan="2" Content="Load Address" x:Name="SetAddressButton" Click="SetAddress_Click"/>
 
-                <Label Grid.Row="4" Grid.Column="0" Content="Width"/>
+                <Label Grid.Row="4" Grid.Column="0" Content="Width (Max 2000):"/>
                 <TextBox Grid.Row="4" Grid.Column="1" x:Name="MapWidth"/>
-                <Label Grid.Row="5" Grid.Column="0" Content="Height"/>
+                <Label Grid.Row="5" Grid.Column="0" Content="Height (Max 2000):"/>
                 <TextBox Grid.Row="5" Grid.Column="1" x:Name="MapHeight"/>
             </Grid>
         </ScrollViewer>
